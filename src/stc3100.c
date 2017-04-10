@@ -49,10 +49,13 @@ s16 s16_BattCounter;     // conv counter
 
 #define CurrentFactor  (48210/SENSERESISTOR) 
 // LSB=11.77uV/R= ~48210/R/4096 - convert to mA
+
 #define ChargeCountFactor  (27443/SENSERESISTOR)
 // LSB=6.7uVh/R ~27443/R/4096 - converter to mAh
+
 #define VoltageFactor  9994  
 // LSB=2.44mV ~9994/4096 - convert to mV
+
 #define TemperatureFactor  5120  
 // LSB=0.125°C ~5120/4096 - convert to 0.1°C
 
@@ -82,21 +85,23 @@ static s16 conv(s16 s16_value, u16 u16_factor)
 * Input          : u8_register: STC3100 register,
 * Return         : 8-bit value, or 0 if error
 *******************************************************************************/
-s8 STC3100_ReadByte(u8 Addr)
+int STC3100_ReadByte(u8 Addr)
 {
 	s8 s8_value;
 	u8 pu8_data[2];
-	s8 s8_res;
+	int res;
 
-	s8_res=STC3100_Read(1, Addr, pu8_data);
+	res=STC3100_Read(1, Addr, pu8_data);
 
-	if (s8_res == STC3100_OK)
+	if (res == STC3100_OK)
 	{
 		// no error
 		s8_value = pu8_data[0];
 	}
 	else
-		s8_value=0;
+	{
+		return (int)(-1); //error
+	}
 
 	return(s8_value);
 }
@@ -108,22 +113,24 @@ s8 STC3100_ReadByte(u8 Addr)
 * Input          : u8_register: STC3100 register,
 * Return         : 16-bit value, or 0 if error
 *******************************************************************************/
-s16 STC3100_ReadWord(u8 Addr)
+int STC3100_ReadWord(u8 Addr)
 {
 	s16 s16_value;
 	u8 pu8_data[2];
-	s8 s8_res;
+	int res;
 
-	s8_res=STC3100_Read(2, Addr, pu8_data);
+	res=STC3100_Read(2, Addr, pu8_data);
 
-	if (s8_res == STC3100_OK)
+	if (res == STC3100_OK)
 	{
 		// no error
 		s16_value = pu8_data[0];
-		s16_value += pu8_data[1] << 8;
+		s16_value |= ((s16)pu8_data[1]) << 8;
 	}
 	else
-		s16_value=0;
+	{
+		return (int)(-1); //error
+	}
 
 	return(s16_value);
 }
@@ -136,16 +143,25 @@ s16 STC3100_ReadWord(u8 Addr)
 * Input          : u8_register: STC3100 register, u8_value: 8-bit value to write
 * Return         : error status (STC3100_OK, !STC3100_OK)
 *******************************************************************************/
-s8 STC3100_WriteByte(u8 u8_Register, u8 u8_value)
+int STC3100_WriteByte(u8 u8_Register, u8 u8_value)
 {
-	s8 s8_res;
+	int res;
 	u8 pu8_data[2];
 
 	pu8_data[0]=u8_value; 
-	s8_res = STC3100_Write(1, u8_Register, pu8_data);
+	res = STC3100_Write(1, u8_Register, pu8_data);
+	
+	if (res == STC3100_OK)
+	{
+		// Ok, no error
+		res = 0;
+	}
+	else
+	{
+		res = (int)(-1); //error
+	}
 
-	return(s8_res);
-
+	return(res);
 }
 
 
@@ -157,17 +173,26 @@ s8 STC3100_WriteByte(u8 u8_Register, u8 u8_value)
 * Input          : u8_register: STC3100 register, s16_value: 16-bit value to write
 * Return         : error status (STC3100_OK, !STC3100_OK)
 *******************************************************************************/
-s8 STC3100_WriteWord(u8 u8_Register, s16 s16_value)
+int STC3100_WriteWord(u8 u8_Register, s16 s16_value)
 {
-	s8 s8_res;
+	int res;
 	u8 pu8_data[2];
 
 	pu8_data[0]=s16_value & 0xFF; 
 	pu8_data[1]=s16_value>>8; 
-	s8_res = STC3100_Write(2, u8_Register, pu8_data);
+	res = STC3100_Write(2, u8_Register, pu8_data);
 
-	return(s8_res);
+	if (res == STC3100_OK)
+	{
+		// Ok, no error
+		res = 0;
+	}
+	else
+	{
+		res = (int)(-1); //error
+	}
 
+	return(res);
 }
 
 
@@ -178,24 +203,24 @@ s8 STC3100_WriteWord(u8 u8_Register, s16 s16_value)
 * Input          : None
 * Return         : error status (STC3100_OK, !STC3100_OK)
 *******************************************************************************/
-s8 STC3100_Startup(void)
+int STC3100_Startup(void)
 {
-	s8 s8_res;
+	int s32_res;
 
 	// first, check the presence of the STC3100 by reading first byte of dev. ID
-	s8_res = STC3100_ReadByte(STC3100_REG_ID0);
-	if (s8_res!= 0x10) return (-1);
+	s32_res = STC3100_ReadByte(STC3100_REG_ID0);
+	if (s32_res!= 0x10) return (-1);
 
 	// read the REG_CTRL to reset the GG_EOC and VTM_EOC bits
 	STC3100_ReadByte(STC3100_REG_CTRL);
 
 	// write 0x02 into the REG_CTRL to reset the accumulator and counter and clear the PORDET bit,
-	s8_res = STC3100_WriteByte(STC3100_REG_CTRL, 0x02);
-	if (s8_res!= STC3100_OK) return (s8_res);
+	s32_res = STC3100_WriteByte(STC3100_REG_CTRL, 0x02);
+	if (s32_res!= STC3100_OK) return (s32_res);
 
 	// then 0x10 into the REG_MODE register to start the STC3100 in 14-bit resolution mode.
-	s8_res = STC3100_WriteByte(STC3100_REG_MODE, 0x10);
-	if (s8_res!= STC3100_OK) return (s8_res);
+	s32_res = STC3100_WriteByte(STC3100_REG_MODE, 0x10);
+	if (s32_res!= STC3100_OK) return (s32_res);
 
 	return (STC3100_OK);
 }
@@ -207,13 +232,13 @@ s8 STC3100_Startup(void)
 * Input          : None
 * Return         : error status (STC3100_OK, !STC3100_OK)
 *******************************************************************************/
-s8 STC3100_Powerdown(void)
+int STC3100_Powerdown(void)
 {
-	s8 s8_res;
+	int s32_res;
 
 	// write 0 into the REG_MODE register to put the STC3100 in standby mode
-	s8_res = STC3100_WriteByte(STC3100_REG_MODE, 0);
-	if (s8_res!= STC3100_OK) return (s8_res);
+	s32_res = STC3100_WriteByte(STC3100_REG_MODE, 0);
+	if (s32_res!= STC3100_OK) return (s32_res);
 
 	return (STC3100_OK);
 }
@@ -229,15 +254,15 @@ s8 STC3100_Powerdown(void)
 * Return         : error status (STC3100_OK, !STC3100_OK)
 * Affect         : global battery variables
 *******************************************************************************/
-s8 ReadBatteryData(void)
+int ReadBatteryData(void)
 {
 	u8 pu8_data[12];
-	s8 s8_res;
+	int s32_res;
 	s16 s16_value;
 
 	// read STC3100 registers 0 to 11
-	s8_res=STC3100_Read(12, 0, pu8_data);
-	if (s8_res!=STC3100_OK) return(s8_res);  // read failed
+	s32_res=STC3100_Read(12, 0, pu8_data);
+	if (s32_res!=STC3100_OK) return(s32_res);  // read failed
 
 	// fill the battery status data
 

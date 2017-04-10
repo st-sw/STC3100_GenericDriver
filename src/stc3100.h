@@ -94,14 +94,14 @@ typedef long s32;
 
 /* Exported functions prototypes----------------------------------------------*/
 //s8 STC3100_Read(u8, u8, u8 *);
-s8 STC3100_ReadByte(u8);
-s16 STC3100_ReadWord(u8);
+int STC3100_ReadByte(u8);
+int STC3100_ReadWord(u8);
 //s8 STC3100_Write(u8 , u8 ,u8 *);
-s8 STC3100_WriteByte(u8, u8);
-s8 STC3100_WriteWord(u8, s16);
-s8 STC3100_Startup(void);
-s8 STC3100_Powerdown(void);
-s8 ReadBatteryData(void);
+int STC3100_WriteByte(u8, u8);
+int STC3100_WriteWord(u8, s16);
+int STC3100_Startup(void);
+int STC3100_Powerdown(void);
+int ReadBatteryData(void);
 
 
 /* STC3100 variables definition ------------------------------------*/
